@@ -1,10 +1,9 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, FileUp, PlusCircle, Save, Clock } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,20 +12,15 @@ interface ImportExportProps {
   onDataImported?: (data: any) => void;
 }
 
-// Function to calculate solar score based on GHI and DNI values
 const calculateSolarScore = (ghi: number, dni: number): number => {
-  // Normalized values (assuming GHI range 4-6.5 and DNI range 4.5-7)
   const normalizedGHI = Math.min(Math.max((ghi - 4) / 2.5, 0), 1);
   const normalizedDNI = Math.min(Math.max((dni - 4.5) / 2.5, 0), 1);
   
-  // Score calculation (GHI has 60% weight and DNI has 40% weight)
   return Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
 };
 
-// Function to generate monthly data based on annual values
 const generateMonthlyData = (ghi: number, dni: number) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  // Seasonal factors for northern hemisphere (increase in summer, decrease in winter)
   const seasonalFactors = [0.7, 0.8, 0.9, 1.1, 1.2, 1.1, 0.9, 0.8, 0.9, 0.8, 0.7, 0.6];
   
   return months.map((month, index) => ({
@@ -36,17 +30,14 @@ const generateMonthlyData = (ghi: number, dni: number) => {
   }));
 };
 
-// Function to estimate capacity and generation potential
 const estimatePotential = (ghi: number, solarScore: number) => {
-  // Basic estimation based on GHI and solar score
-  const baseCapacityFactor = 0.16 + (ghi - 4) * 0.03; // 16-28% capacity factor range
-  const capacityMW = Math.round(1000 * (solarScore / 100) * 1.2); // Scale based on score
-  const generationMWh = Math.round(capacityMW * 8760 * baseCapacityFactor); // Hours in year * capacity factor
+  const baseCapacityFactor = 0.16 + (ghi - 4) * 0.03;
+  const capacityMW = Math.round(1000 * (solarScore / 100) * 1.2);
+  const generationMWh = Math.round(capacityMW * 8760 * baseCapacityFactor);
   
   return { capacityMW, generationMWh };
 };
 
-// Helper to read CSV files
 const readCSVFile = (file: File): Promise<any[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -86,7 +77,6 @@ const readCSVFile = (file: File): Promise<any[]> => {
   });
 };
 
-// Helper to read JSON files
 const readJSONFile = (file: File): Promise<any> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -112,13 +102,11 @@ const readJSONFile = (file: File): Promise<any> => {
   });
 };
 
-// Local storage functions for saved locations
 const saveLocation = (location: any) => {
   try {
     const savedLocations = localStorage.getItem('savedLocations');
     const locations = savedLocations ? JSON.parse(savedLocations) : [];
     
-    // Check if location already exists by ID
     const existingIndex = locations.findIndex((loc: any) => loc.id === location.id);
     if (existingIndex !== -1) {
       locations[existingIndex] = location;
@@ -161,7 +149,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
-  // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -169,7 +156,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
     }
   };
   
-  // Process the selected file
   const processFile = async () => {
     if (!selectedFile) {
       toast({
@@ -192,54 +178,88 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
       }
       
       if (Array.isArray(data)) {
-        setImportedData(data);
-        
-        // Add ids if they don't exist
         const processedData = data.map((item, index) => {
+          const uniqueId = `imported-${Date.now()}-${index}`;
+          
           if (!item.id) {
-            item.id = `imported-${index}`;
+            item.id = uniqueId;
           }
           
-          // Calculate solar score if not present
           if (item.ghi && item.dni && !item.solarScore) {
-            item.solarScore = calculateSolarScore(item.ghi, item.dni);
+            const normalizedGHI = Math.min(Math.max((item.ghi - 4) / 2.5, 0), 1);
+            const normalizedDNI = Math.min(Math.max((item.dni - 4.5) / 2.5, 0), 1);
+            item.solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
           }
           
-          // Generate monthly data if not present
           if (item.ghi && item.dni && !item.monthlyData) {
-            item.monthlyData = generateMonthlyData(item.ghi, item.dni);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const seasonalFactors = [0.7, 0.8, 0.9, 1.1, 1.2, 1.1, 0.9, 0.8, 0.9, 0.8, 0.7, 0.6];
+            
+            item.monthlyData = months.map((month, idx) => ({
+              month,
+              ghi: Math.round(item.ghi * seasonalFactors[idx] * 100) / 100,
+              dni: Math.round(item.dni * seasonalFactors[idx] * 100) / 100,
+            }));
           }
           
-          // Estimate capacity and generation if not present
           if (item.ghi && item.solarScore && (!item.capacityMW || !item.generationMWh)) {
-            const { capacityMW, generationMWh } = estimatePotential(item.ghi, item.solarScore);
-            item.capacityMW = item.capacityMW || capacityMW;
-            item.generationMWh = item.generationMWh || generationMWh;
+            const baseCapacityFactor = 0.16 + (item.ghi - 4) * 0.03;
+            item.capacityMW = item.capacityMW || Math.round(1000 * (item.solarScore / 100) * 1.2);
+            item.generationMWh = item.generationMWh || Math.round(item.capacityMW * 8760 * baseCapacityFactor);
           }
           
-          return item;
+          return {
+            ...item,
+            state: item.state || "Unknown",
+            district: item.district || "Unknown",
+            name: item.name || `Location-${uniqueId}`,
+          };
         });
+        
+        setImportedData(processedData);
         
         toast({
           title: "Data imported successfully",
           description: `Imported ${processedData.length} locations from ${selectedFile.name}`,
         });
         
+        processedData.forEach(location => {
+          saveLocation(location);
+        });
+        
+        setSavedLocations(getSavedLocations());
+        
         if (onDataImported) {
           onDataImported(processedData);
         }
       } else {
         const dataArray = [data];
+        
+        if (dataArray[0]) {
+          if (!dataArray[0].id) {
+            dataArray[0].id = `imported-${Date.now()}`;
+          }
+          
+          if (dataArray[0].ghi && dataArray[0].dni && !dataArray[0].solarScore) {
+            const normalizedGHI = Math.min(Math.max((dataArray[0].ghi - 4) / 2.5, 0), 1);
+            const normalizedDNI = Math.min(Math.max((dataArray[0].dni - 4.5) / 2.5, 0), 1);
+            dataArray[0].solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
+          }
+        }
+        
         setImportedData(dataArray);
+        
+        if (dataArray[0]) {
+          saveLocation(dataArray[0]);
+          setSavedLocations(getSavedLocations());
+        }
         
         if (onDataImported) {
           onDataImported(dataArray);
         }
       }
       
-      // Close the dialog
       setImportDialogOpen(false);
-      
     } catch (error) {
       console.error("Error processing file:", error);
       toast({
@@ -250,7 +270,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
     }
   };
   
-  // Handle adding a new location
   const handleAddLocation = () => {
     if (!newLocation.name || !newLocation.state) {
       toast({
@@ -270,10 +289,22 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
       return;
     }
     
-    // Create new location with calculated fields
-    const solarScore = calculateSolarScore(newLocation.ghi, newLocation.dni);
-    const { capacityMW, generationMWh } = estimatePotential(newLocation.ghi, solarScore);
-    const monthlyData = generateMonthlyData(newLocation.ghi, newLocation.dni);
+    const normalizedGHI = Math.min(Math.max((newLocation.ghi - 4) / 2.5, 0), 1);
+    const normalizedDNI = Math.min(Math.max((newLocation.dni - 4.5) / 2.5, 0), 1);
+    const solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
+    
+    const baseCapacityFactor = 0.16 + (newLocation.ghi - 4) * 0.03;
+    const capacityMW = Math.round(1000 * (solarScore / 100) * 1.2);
+    const generationMWh = Math.round(capacityMW * 8760 * baseCapacityFactor);
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const seasonalFactors = [0.7, 0.8, 0.9, 1.1, 1.2, 1.1, 0.9, 0.8, 0.9, 0.8, 0.7, 0.6];
+    
+    const monthlyData = months.map((month, index) => ({
+      month,
+      ghi: Math.round(newLocation.ghi * seasonalFactors[index] * 100) / 100,
+      dni: Math.round(newLocation.dni * seasonalFactors[index] * 100) / 100,
+    }));
     
     const locationData = {
       ...newLocation,
@@ -284,7 +315,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
       monthlyData,
     };
     
-    // Save the location
     if (saveLocation(locationData)) {
       setSavedLocations(getSavedLocations());
       
@@ -293,7 +323,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
         description: `${newLocation.name}, ${newLocation.state} has been added and saved`,
       });
       
-      // Reset the form
       setNewLocation({
         name: "",
         state: "",
@@ -306,7 +335,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
       
       setIsAddingLocation(false);
       
-      // Pass the data to parent component if callback exists
       if (onDataImported) {
         onDataImported([locationData]);
       }
@@ -327,7 +355,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
           <CardDescription>Import, export, and manage your solar data</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Import/Export options */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <h3 className="text-sm font-medium">Import Data</h3>
@@ -416,7 +443,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
             </div>
           </div>
           
-          {/* Add new location */}
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">Custom Locations</h3>
@@ -520,7 +546,6 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
               </div>
             )}
             
-            {/* Saved locations */}
             <div className="mt-4">
               <h4 className="text-sm font-medium mb-2">
                 Your Saved Locations 

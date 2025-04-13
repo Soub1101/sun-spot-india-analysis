@@ -201,7 +201,7 @@ const indiaLocations: LocationData[] = [
     generationMWh: 5800000
   },
   
-  // Tamil Nadu
+  // Tamil Nadu - Additional cities
   {
     id: "chennai-1",
     name: "Chennai",
@@ -240,6 +240,59 @@ const indiaLocations: LocationData[] = [
     solarScore: 81,
     capacityMW: 4100,
     generationMWh: 7000000
+  },
+  // New Tamil Nadu cities
+  {
+    id: "madurai-1",
+    name: "Madurai",
+    state: "Tamil Nadu",
+    district: "Madurai",
+    ghi: 5.6,
+    dni: 6.0,
+    latitude: 9.9252,
+    longitude: 78.1198,
+    solarScore: 78,
+    capacityMW: 3700,
+    generationMWh: 6300000
+  },
+  {
+    id: "coimbatore-1",
+    name: "Coimbatore",
+    state: "Tamil Nadu",
+    district: "Coimbatore",
+    ghi: 5.5,
+    dni: 5.9,
+    latitude: 11.0168,
+    longitude: 76.9558,
+    solarScore: 76,
+    capacityMW: 3500,
+    generationMWh: 5900000
+  },
+  {
+    id: "salem-1",
+    name: "Salem",
+    state: "Tamil Nadu",
+    district: "Salem",
+    ghi: 5.7,
+    dni: 6.1,
+    latitude: 11.6643,
+    longitude: 78.1460,
+    solarScore: 79,
+    capacityMW: 3900,
+    generationMWh: 6600000
+  },
+  {
+    id: "tirunelveli-1",
+    name: "Tirunelveli",
+    state: "Tamil Nadu",
+    district: "Tirunelveli",
+    ghi: 5.8,
+    dni: 6.2,
+    latitude: 8.7139,
+    longitude: 77.7567,
+    solarScore: 80,
+    capacityMW: 4000,
+    generationMWh: 6800000
   },
   
   // Karnataka
@@ -326,7 +379,7 @@ const indiaLocations: LocationData[] = [
     generationMWh: 6100000
   },
 
-  // Madhya Pradesh
+  // Madhya Pradesh - Adding Indore
   {
     id: "bhopal-1",
     name: "Bhopal",
@@ -353,6 +406,45 @@ const indiaLocations: LocationData[] = [
     capacityMW: 4400,
     generationMWh: 7500000
   },
+  {
+    id: "indore-1",
+    name: "Indore",
+    state: "Madhya Pradesh",
+    district: "Indore",
+    ghi: 5.8,
+    dni: 6.3,
+    latitude: 22.7196,
+    longitude: 75.8577,
+    solarScore: 82,
+    capacityMW: 4200,
+    generationMWh: 7100000
+  },
+  {
+    id: "ujjain-1",
+    name: "Ujjain",
+    state: "Madhya Pradesh",
+    district: "Ujjain",
+    ghi: 5.7,
+    dni: 6.2,
+    latitude: 23.1765,
+    longitude: 75.7885,
+    solarScore: 80,
+    capacityMW: 4000,
+    generationMWh: 6800000
+  },
+  {
+    id: "gwalior-1",
+    name: "Gwalior",
+    state: "Madhya Pradesh",
+    district: "Gwalior",
+    ghi: 5.6,
+    dni: 6.1,
+    latitude: 26.2183,
+    longitude: 78.1828,
+    solarScore: 78,
+    capacityMW: 3700,
+    generationMWh: 6300000
+  },
   
   // Uttar Pradesh
   {
@@ -369,7 +461,7 @@ const indiaLocations: LocationData[] = [
     generationMWh: 5300000
   },
   
-  // West Bengal
+  // West Bengal - Adding more cities
   {
     id: "kolkata-1",
     name: "Kolkata",
@@ -382,6 +474,58 @@ const indiaLocations: LocationData[] = [
     solarScore: 68,
     capacityMW: 2700,
     generationMWh: 4600000
+  },
+  {
+    id: "siliguri-1",
+    name: "Siliguri",
+    state: "West Bengal",
+    district: "Darjeeling",
+    ghi: 4.9,
+    dni: 5.2,
+    latitude: 26.7271,
+    longitude: 88.3953,
+    solarScore: 67,
+    capacityMW: 2600,
+    generationMWh: 4400000
+  },
+  {
+    id: "asansol-1",
+    name: "Asansol",
+    state: "West Bengal",
+    district: "Paschim Bardhaman",
+    ghi: 5.1,
+    dni: 5.4,
+    latitude: 23.6889,
+    longitude: 86.9661,
+    solarScore: 70,
+    capacityMW: 2900,
+    generationMWh: 4900000
+  },
+  {
+    id: "durgapur-1",
+    name: "Durgapur",
+    state: "West Bengal",
+    district: "Paschim Bardhaman",
+    ghi: 5.0,
+    dni: 5.3,
+    latitude: 23.5204,
+    longitude: 87.3119,
+    solarScore: 69,
+    capacityMW: 2800,
+    generationMWh: 4700000
+  },
+  {
+    id: "darjeeling-1",
+    name: "Darjeeling",
+    state: "West Bengal",
+    district: "Darjeeling",
+    ghi: 4.7,
+    dni: 5.0,
+    latitude: 27.0410,
+    longitude: 88.2663,
+    solarScore: 64,
+    capacityMW: 2400,
+    generationMWh: 4100000
   },
   
   // Bihar
