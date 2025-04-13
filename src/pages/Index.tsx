@@ -1,216 +1,360 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Sun, Search, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Sun, Search, Download, ArrowRight } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import indiaLocations from "@/data/indiaLocations";
 
-const Index: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState("");
+interface LocationData {
+  id: string;
+  name: string;
+  state: string;
+  ghi: number;
+  dni: number;
+  latitude: number;
+  longitude: number;
+  solarScore: number;
+  district?: string;
+  sector?: string;
+  capacityMW?: number;
+  generationMWh?: number;
+}
+
+const getSolarScoreLabel = (score: number) => {
+  if (score >= 80) return { label: "Excellent", color: "text-green-600" };
+  if (score >= 70) return { label: "Very Good", color: "text-green-500" };
+  if (score >= 60) return { label: "Good", color: "text-blue-500" };
+  if (score >= 50) return { label: "Moderate", color: "text-yellow-500" };
+  if (score >= 40) return { label: "Fair", color: "text-orange-500" };
+  return { label: "Poor", color: "text-red-500" };
+};
+
+const LocationDetails = ({ location }: { location: LocationData }) => {
+  const score = getSolarScoreLabel(location.solarScore);
+  
+  const downloadData = () => {
+    const jsonData = JSON.stringify(location, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${location.name.replace(/\s+/g, '_')}_solar_data.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Data downloaded successfully",
+      description: `Solar data for ${location.name} has been downloaded as JSON`,
+    });
+  };
+  
+  // Generate monthly data based on location's GHI value with some variation
+  const monthlyData = [
+    { month: "Jan", ghi: Math.round(location.ghi * 0.7) },
+    { month: "Feb", ghi: Math.round(location.ghi * 0.8) },
+    { month: "Mar", ghi: Math.round(location.ghi * 0.9) },
+    { month: "Apr", ghi: Math.round(location.ghi * 1.1) },
+    { month: "May", ghi: Math.round(location.ghi * 1.2) },
+    { month: "Jun", ghi: Math.round(location.ghi * 0.8) },
+    { month: "Jul", ghi: Math.round(location.ghi * 0.7) },
+    { month: "Aug", ghi: Math.round(location.ghi * 0.7) },
+    { month: "Sep", ghi: Math.round(location.ghi * 0.8) },
+    { month: "Oct", ghi: Math.round(location.ghi * 0.9) },
+    { month: "Nov", ghi: Math.round(location.ghi * 0.8) },
+    { month: "Dec", ghi: Math.round(location.ghi * 0.7) },
+  ];
   
   return (
-    <div className="space-y-12 pb-8">
-      {/* Hero Section */}
-      <section className="pt-10 md:pt-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <h1 className="animate-fade-up text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
-            <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-amber-500 bg-clip-text text-transparent">
-              Solar Radiation Analysis
-            </span>
-          </h1>
-          <p className="mt-6 animate-fade-up text-lg text-gray-600 animation-delay-200">
-            Analyze solar potential, visualize radiation data, and find optimal
-            locations for solar installations across India.
-          </p>
-          <div className="mt-8 flex animate-fade-up flex-col items-center gap-4 animation-delay-300 sm:flex-row sm:justify-center">
-            <Link to="/signup">
-              <Button className="w-full sm:w-auto">Get Started</Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" className="w-full sm:w-auto">
-                Log In
-              </Button>
-            </Link>
+    <div className="animate-fade-in space-y-6 rounded-lg border p-6 mt-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">{location.name}</h2>
+          <p className="text-gray-500">{location.state}{location.district ? `, ${location.district}` : ''}</p>
+        </div>
+        <Button
+          variant="outline" 
+          className="flex items-center gap-2"
+          onClick={downloadData}
+        >
+          <Download className="h-4 w-4" />
+          Download Data
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">GHI (Global Horizontal Irradiance)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{location.ghi} kWh/m²/day</div>
+            <p className="text-xs text-gray-500">Annual average</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">DNI (Direct Normal Irradiance)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{location.dni} kWh/m²/day</div>
+            <p className="text-xs text-gray-500">Annual average</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Solar Suitability Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{location.solarScore}/100</div>
+            <p className={`text-sm ${score.color}`}>{score.label}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Coordinates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">
+              {location.latitude.toFixed(4)}°, {location.longitude.toFixed(4)}°
+            </div>
+            <p className="text-xs text-gray-500">Latitude, Longitude</p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="mt-6">
+        <h3 className="mb-4 text-lg font-semibold">Monthly Solar Radiation</h3>
+        <div className="h-64 w-full">
+          <div className="flex h-full items-end">
+            {monthlyData.map((data) => (
+              <div key={data.month} className="group flex flex-1 flex-col items-center">
+                <div className="relative w-full">
+                  <div 
+                    className="mx-auto w-full bg-yellow-500 transition-all duration-300 group-hover:bg-yellow-400"
+                    style={{ height: `${(data.ghi / location.ghi) * 150}px` }}
+                  ></div>
+                  <div className="absolute bottom-0 left-0 right-0 mx-auto hidden w-full max-w-xs -translate-y-2 rounded bg-black bg-opacity-80 p-1 text-center text-xs text-white group-hover:block">
+                    {data.ghi} kWh/m²/day
+                  </div>
+                </div>
+                <span className="mt-2 text-xs">{data.month}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
       
-      {/* Search Section */}
-      <section className="mx-auto max-w-3xl">
-        <div className="rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-md sm:p-8">
-          <div className="text-center">
-            <h2 className="animate-fade-up text-2xl font-bold tracking-tight text-gray-900">
-              Find Solar Potential for Any Location
-            </h2>
-            <p className="mt-2 animate-fade-up text-gray-600 animation-delay-100">
-              Enter a city or district in India to analyze solar radiation data
-            </p>
-          </div>
-          <div className="mt-6 animate-fade-up animation-delay-200">
-            <div className="flex overflow-hidden rounded-lg shadow-sm">
-              <Input
-                className="flex-1 border-0 focus-visible:ring-0"
-                placeholder="Search for a location (e.g., Mumbai, Delhi, Jaipur)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button className="rounded-l-none">
-                <Search className="mr-2 h-4 w-4" />
-                Search
-              </Button>
+      <div className="mt-6 rounded-lg bg-blue-50 p-4">
+        <h3 className="text-lg font-semibold text-blue-700">Recommendations</h3>
+        <p className="mt-2 text-sm text-blue-700">
+          {score.label === "Excellent" || score.label === "Very Good" ? (
+            "This location has exceptional solar potential. Highly recommended for both commercial and residential solar installations."
+          ) : score.label === "Good" ? (
+            "Good solar potential. Suitable for most solar installations with proper positioning."
+          ) : score.label === "Moderate" ? (
+            "Moderate solar potential. Consider optimizing panel angle and using high-efficiency panels."
+          ) : (
+            "Limited solar potential. May require larger installation area and careful planning for economic viability."
+          )}
+        </p>
+        
+        {location.capacityMW && location.generationMWh && (
+          <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-sm font-semibold text-blue-700">Potential Capacity</p>
+              <p className="text-sm text-blue-700">{location.capacityMW.toLocaleString()} MW</p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-blue-700">Annual Generation</p>
+              <p className="text-sm text-blue-700">{location.generationMWh.toLocaleString()} MWh/year</p>
             </div>
           </div>
-          <div className="mt-4 flex animate-fade-up flex-wrap items-center justify-center gap-2 text-xs text-gray-500 animation-delay-300">
-            <span>Popular:</span>
-            <Button variant="ghost" size="sm" onClick={() => setSearchQuery("New Delhi")}>
-              New Delhi
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSearchQuery("Mumbai")}>
-              Mumbai
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSearchQuery("Chennai")}>
-              Chennai
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSearchQuery("Jaipur")}>
-              Jaipur
-            </Button>
+        )}
+        
+        <Button className="mt-4 flex items-center gap-2" size="sm">
+          View Detailed Report
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const Index = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
+  
+  const handleSearch = () => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) {
+      toast({
+        title: "Search query is empty",
+        description: "Please enter a location to search",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const result = indiaLocations.find(
+      (loc) => 
+        loc.name.toLowerCase().includes(query) || 
+        loc.state.toLowerCase().includes(query) ||
+        (loc.district && loc.district.toLowerCase().includes(query))
+    );
+    
+    if (result) {
+      setSelectedLocation(result);
+    } else {
+      toast({
+        title: "Location not found",
+        description: "Try another location or check spelling",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  return (
+    <div>
+      <style>
+        {`
+        .solar-gradient {
+          background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        }
+        `}
+      </style>
+      <div className="solar-gradient rounded-lg py-12 text-white">
+        <div className="container mx-auto px-6">
+          <div className="flex items-center space-x-4">
+            <Sun className="h-12 w-12 text-yellow-300" />
+            <h1 className="text-3xl font-bold sm:text-4xl">Solar Radiation Analysis</h1>
+          </div>
+          <p className="mt-4 max-w-2xl text-blue-100">
+            Analyze solar radiation potential across India. Find the best locations
+            for solar installations based on GHI, DNI, and other critical factors.
+          </p>
+          
+          <div className="mt-8 flex max-w-md flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                className="pl-10 text-black"
+                placeholder="Search any location in India..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+            </div>
+            <Button onClick={handleSearch}>Analyze</Button>
+          </div>
+          
+          <div className="mt-6 flex flex-wrap gap-2">
+            {["Delhi", "Mumbai", "Chennai", "Rajasthan", "Gujarat"].map((suggestion) => (
+              <Button 
+                key={suggestion}
+                variant="outline" 
+                className="border-blue-300 bg-blue-900 bg-opacity-30 text-blue-50 hover:bg-blue-800"
+                onClick={() => {
+                  setSearchQuery(suggestion);
+                  const result = indiaLocations.find(
+                    (loc) => loc.name === suggestion || loc.state === suggestion
+                  );
+                  if (result) {
+                    setSelectedLocation(result);
+                  }
+                }}
+              >
+                {suggestion}
+              </Button>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
       
-      {/* Features Section */}
-      <section className="animate-fade-up animation-delay-400">
-        <h2 className="mb-8 text-center text-3xl font-bold">
-          Why Analyze Solar Potential?
-        </h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="overflow-hidden border-b-4 border-b-blue-500 transition-all hover:shadow-md">
-            <CardContent className="p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-500">
-                <Sun className="h-6 w-6" />
-              </div>
-              <h3 className="mb-2 text-xl font-bold">Maximize Efficiency</h3>
-              <p className="text-gray-600">
-                Find the ideal placement and angle for your solar panels to
-                maximize energy production.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="overflow-hidden border-b-4 border-b-green-500 transition-all hover:shadow-md">
-            <CardContent className="p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-500">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2a10 10 0 1 0 10 10H12V2Z" />
-                  <path d="M20 12a8 8 0 1 0-16 0" />
-                  <path d="M12 12v-8" />
-                </svg>
-              </div>
-              <h3 className="mb-2 text-xl font-bold">Data-Driven Decisions</h3>
-              <p className="text-gray-600">
-                Make informed decisions based on historical and real-time solar
-                radiation data.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="overflow-hidden border-b-4 border-b-amber-500 transition-all hover:shadow-md">
-            <CardContent className="p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-500">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="18" height="10" x="3" y="11" rx="2" />
-                  <circle cx="12" cy="5" r="2" />
-                  <path d="M12 7v4" />
-                  <line x1="8" x2="8" y1="16" y2="16" />
-                  <line x1="16" x2="16" y1="16" y2="16" />
-                </svg>
-              </div>
-              <h3 className="mb-2 text-xl font-bold">ROI Calculation</h3>
-              <p className="text-gray-600">
-                Calculate potential return on investment and energy savings for
-                your solar installations.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-      
-      {/* Getting Started Section */}
-      <section className="animate-fade-up rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white animation-delay-500">
-        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-          <div>
-            <h2 className="text-2xl font-bold">Ready to analyze your location?</h2>
-            <p className="mt-2 max-w-lg text-blue-100">
-              Create an account to save your searches, generate reports, and
-              receive personalized solar recommendations.
+      <div className="container mx-auto px-4 py-8">
+        {selectedLocation ? (
+          <LocationDetails location={selectedLocation} />
+        ) : (
+          <div className="mt-8 rounded-lg border border-dashed p-12 text-center">
+            <Sun className="mx-auto h-12 w-12 text-yellow-500 opacity-50" />
+            <h2 className="mt-4 text-xl font-medium">Search for a Location</h2>
+            <p className="mt-2 text-gray-500">
+              Enter a city, state, or district to analyze its solar potential
             </p>
           </div>
-          <Link to="/signup">
-            <Button variant="secondary" className="group min-w-[160px]">
-              Get Started
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </Link>
+        )}
+        
+        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <Sun className="h-8 w-8 text-yellow-500" />
+              <CardTitle className="mt-4">Solar Radiation Data</CardTitle>
+              <CardDescription>
+                Access historical and projected solar radiation data from NREL and NASA
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full">
+                Explore Solar Data
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-8 w-8 text-blue-500" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <CardTitle className="mt-4">Detailed Analysis</CardTitle>
+              <CardDescription>
+                Get comprehensive reports on solar potential and ROI estimates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full">
+                Create Analysis
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-8 w-8 text-green-500" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+              </svg>
+              <CardTitle className="mt-4">Solar Installation Guide</CardTitle>
+              <CardDescription>
+                Learn about optimal solar panel placement based on your location
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full">
+                View Guide
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-      </section>
-      
-      {/* Add animation styles */}
-      <style jsx>{`
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-up {
-          animation: fadeUp 0.6s ease-out forwards;
-          opacity: 0;
-        }
-        
-        .animation-delay-100 {
-          animation-delay: 0.1s;
-        }
-        
-        .animation-delay-200 {
-          animation-delay: 0.2s;
-        }
-        
-        .animation-delay-300 {
-          animation-delay: 0.3s;
-        }
-        
-        .animation-delay-400 {
-          animation-delay: 0.4s;
-        }
-        
-        .animation-delay-500 {
-          animation-delay: 0.5s;
-        }
-      `}</style>
+      </div>
     </div>
   );
 };
