@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { useTemperatureCalculation } from "@/hooks/useTemperatureCalculation";
@@ -50,10 +49,11 @@ const LiveData: React.FC = () => {
   // Current radiation value (latest in the array)
   const currentRadiation = liveData.length ? liveData[liveData.length - 1].ghi : 0;
   
-  // Use our custom temperature hook for more accurate temperature calculation
+  // Use our updated temperature hook with longitude and location name
   const temperatureData = useTemperatureCalculation(
-    locationData?.latitude || 20, 
-    currentRadiation
+    locationData?.latitude || 20,
+    locationData?.longitude || 77, // Added longitude parameter
+    locationData?.name || "Delhi"  // Added location name parameter
   );
   
   // Load data handler - memoized to prevent recreation on each render
