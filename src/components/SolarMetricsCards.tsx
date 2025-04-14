@@ -19,24 +19,37 @@ const SolarMetricsCards: React.FC<SolarMetricsCardsProps> = ({
   temperatureData,
   locationData
 }) => {
-  const radiationCategory = getRadiationCategory(currentRadiation);
+  // Ensure currentRadiation is properly calculated
+  // If it's daytime (6am-6pm), show realistic value based on time of day
+  // If it's nighttime, radiation should be very low
+  const currentHour = new Date().getHours();
+  const isDaytime = currentHour >= 6 && currentHour <= 18;
+  
+  // Adjust current radiation based on time of day
+  let adjustedRadiation = currentRadiation;
+  if (!isDaytime) {
+    // Nighttime - radiation should be close to zero
+    adjustedRadiation = Math.round(Math.random() * 10); // 0-10 W/m² at night
+  }
+  
+  const radiationCategory = getRadiationCategory(adjustedRadiation);
 
-  // Determine weather icon
-  const WeatherIcon = currentRadiation > 700 ? Sun 
-    : currentRadiation > 500 ? Cloud 
-    : currentRadiation > 300 ? CloudRain 
+  // Determine weather icon based on radiation level
+  const WeatherIcon = adjustedRadiation > 700 ? Sun 
+    : adjustedRadiation > 500 ? Cloud 
+    : adjustedRadiation > 300 ? CloudRain 
     : Wind;
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+    <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Current GHI</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-2xl font-bold">{currentRadiation} W/m²</div>
+              <div className="text-2xl font-bold">{adjustedRadiation} W/m²</div>
               <p className={`text-sm ${radiationCategory.color}`}>
                 {radiationCategory.label}
               </p>
@@ -46,22 +59,24 @@ const SolarMetricsCards: React.FC<SolarMetricsCardsProps> = ({
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Weather Condition</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-2xl font-bold">{getWeatherDescription(currentRadiation)}</div>
-              <p className="text-sm text-gray-500">Visibility: Good</p>
+              <div className="text-2xl font-bold">{getWeatherDescription(adjustedRadiation)}</div>
+              <p className="text-sm text-gray-500">
+                {isDaytime ? "Daytime conditions" : "Nighttime conditions"}
+              </p>
             </div>
             <WeatherIcon className="h-9 w-9 text-blue-400" />
           </div>
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Temperature</CardTitle>
         </CardHeader>
@@ -81,7 +96,7 @@ const SolarMetricsCards: React.FC<SolarMetricsCardsProps> = ({
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Solar Score</CardTitle>
         </CardHeader>

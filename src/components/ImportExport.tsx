@@ -1,12 +1,14 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileDown, FileUp, PlusCircle, Save, Clock } from "lucide-react";
+import { FileDown, FileUp, PlusCircle, Save, Clock, BarChart3 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import AnalysisResult from "./AnalysisResult";
 
 interface ImportExportProps {
   onDataImported?: (data: any) => void;
@@ -60,7 +62,9 @@ const readCSVFile = (file: File): Promise<any[]> => {
         
         for (let j = 0; j < headers.length; j++) {
           const value = values[j]?.trim();
-          entry[headers[j]] = isNaN(Number(value)) ? value : Number(value);
+          if (value !== undefined) {
+            entry[headers[j]] = isNaN(Number(value)) ? value : Number(value);
+          }
         }
         
         results.push(entry);
@@ -102,36 +106,6 @@ const readJSONFile = (file: File): Promise<any> => {
   });
 };
 
-const saveLocation = (location: any) => {
-  try {
-    const savedLocations = localStorage.getItem('savedLocations');
-    const locations = savedLocations ? JSON.parse(savedLocations) : [];
-    
-    const existingIndex = locations.findIndex((loc: any) => loc.id === location.id);
-    if (existingIndex !== -1) {
-      locations[existingIndex] = location;
-    } else {
-      locations.push(location);
-    }
-    
-    localStorage.setItem('savedLocations', JSON.stringify(locations));
-    return true;
-  } catch (error) {
-    console.error("Error saving location:", error);
-    return false;
-  }
-};
-
-const getSavedLocations = () => {
-  try {
-    const savedLocations = localStorage.getItem('savedLocations');
-    return savedLocations ? JSON.parse(savedLocations) : [];
-  } catch (error) {
-    console.error("Error retrieving saved locations:", error);
-    return [];
-  }
-};
-
 const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
   const [newLocation, setNewLocation] = useState({
     name: "",
@@ -144,10 +118,10 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
   });
   
   const [importedData, setImportedData] = useState<any[]>([]);
-  const [savedLocations, setSavedLocations] = useState<any[]>(getSavedLocations());
   const [isAddingLocation, setIsAddingLocation] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -186,8 +160,8 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
           }
           
           if (item.ghi && item.dni && !item.solarScore) {
-            const normalizedGHI = Math.min(Math.max((item.ghi - 4) / 2.5, 0), 1);
-            const normalizedDNI = Math.min(Math.max((item.dni - 4.5) / 2.5, 0), 1);
+            const normalizedGHI = Math.min(Math.max((parseFloat(item.ghi) - 4) / 2.5, 0), 1);
+            const normalizedDNI = Math.min(Math.max((parseFloat(item.dni) - 4.5) / 2.5, 0), 1);
             item.solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
           }
           
@@ -197,14 +171,14 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
             
             item.monthlyData = months.map((month, idx) => ({
               month,
-              ghi: Math.round(item.ghi * seasonalFactors[idx] * 100) / 100,
-              dni: Math.round(item.dni * seasonalFactors[idx] * 100) / 100,
+              ghi: Math.round(parseFloat(item.ghi) * seasonalFactors[idx] * 100) / 100,
+              dni: Math.round(parseFloat(item.dni) * seasonalFactors[idx] * 100) / 100,
             }));
           }
           
           if (item.ghi && item.solarScore && (!item.capacityMW || !item.generationMWh)) {
-            const baseCapacityFactor = 0.16 + (item.ghi - 4) * 0.03;
-            item.capacityMW = item.capacityMW || Math.round(1000 * (item.solarScore / 100) * 1.2);
+            const baseCapacityFactor = 0.16 + (parseFloat(item.ghi) - 4) * 0.03;
+            item.capacityMW = item.capacityMW || Math.round(1000 * (parseFloat(item.solarScore) / 100) * 1.2);
             item.generationMWh = item.generationMWh || Math.round(item.capacityMW * 8760 * baseCapacityFactor);
           }
           
@@ -223,15 +197,11 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
           description: `Imported ${processedData.length} locations from ${selectedFile.name}`,
         });
         
-        processedData.forEach(location => {
-          saveLocation(location);
-        });
-        
-        setSavedLocations(getSavedLocations());
-        
         if (onDataImported) {
           onDataImported(processedData);
         }
+        
+        setShowAnalysis(true);
       } else {
         const dataArray = [data];
         
@@ -241,22 +211,19 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
           }
           
           if (dataArray[0].ghi && dataArray[0].dni && !dataArray[0].solarScore) {
-            const normalizedGHI = Math.min(Math.max((dataArray[0].ghi - 4) / 2.5, 0), 1);
-            const normalizedDNI = Math.min(Math.max((dataArray[0].dni - 4.5) / 2.5, 0), 1);
+            const normalizedGHI = Math.min(Math.max((parseFloat(dataArray[0].ghi) - 4) / 2.5, 0), 1);
+            const normalizedDNI = Math.min(Math.max((parseFloat(dataArray[0].dni) - 4.5) / 2.5, 0), 1);
             dataArray[0].solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
           }
         }
         
         setImportedData(dataArray);
         
-        if (dataArray[0]) {
-          saveLocation(dataArray[0]);
-          setSavedLocations(getSavedLocations());
-        }
-        
         if (onDataImported) {
           onDataImported(dataArray);
         }
+        
+        setShowAnalysis(true);
       }
       
       setImportDialogOpen(false);
@@ -315,36 +282,30 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
       monthlyData,
     };
     
-    if (saveLocation(locationData)) {
-      setSavedLocations(getSavedLocations());
-      
-      toast({
-        title: "Location added successfully",
-        description: `${newLocation.name}, ${newLocation.state} has been added and saved`,
-      });
-      
-      setNewLocation({
-        name: "",
-        state: "",
-        district: "",
-        ghi: 0,
-        dni: 0,
-        latitude: 0,
-        longitude: 0,
-      });
-      
-      setIsAddingLocation(false);
-      
-      if (onDataImported) {
-        onDataImported([locationData]);
-      }
-    } else {
-      toast({
-        title: "Error saving location",
-        description: "Failed to save location. Please try again.",
-        variant: "destructive",
-      });
+    setImportedData([locationData]);
+    
+    toast({
+      title: "Location added successfully",
+      description: `${newLocation.name}, ${newLocation.state} has been added`,
+    });
+    
+    setNewLocation({
+      name: "",
+      state: "",
+      district: "",
+      ghi: 0,
+      dni: 0,
+      latitude: 0,
+      longitude: 0,
+    });
+    
+    setIsAddingLocation(false);
+    
+    if (onDataImported) {
+      onDataImported([locationData]);
     }
+    
+    setShowAnalysis(true);
   };
   
   return (
@@ -404,36 +365,35 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
             </div>
             
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">Export Saved Data</h3>
-              <p className="text-xs text-gray-500">Export your saved locations and analysis</p>
+              <h3 className="text-sm font-medium">Export Data</h3>
+              <p className="text-xs text-gray-500">Export your analysis and data</p>
               <Button 
                 variant="outline" 
                 className="w-full"
                 onClick={() => {
-                  const locations = getSavedLocations();
-                  if (locations.length === 0) {
+                  if (importedData.length === 0) {
                     toast({
-                      title: "No saved locations",
-                      description: "You don't have any saved locations to export",
+                      title: "No data to export",
+                      description: "Import or add location data first",
                       variant: "destructive",
                     });
                     return;
                   }
                   
-                  const jsonData = JSON.stringify(locations, null, 2);
+                  const jsonData = JSON.stringify(importedData, null, 2);
                   const blob = new Blob([jsonData], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   
                   const link = document.createElement('a');
                   link.href = url;
-                  link.download = `solar_locations_export_${new Date().toISOString().split('T')[0]}.json`;
+                  link.download = `solar_data_export_${new Date().toISOString().split('T')[0]}.json`;
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
                   
                   toast({
                     title: "Data exported successfully",
-                    description: `${locations.length} locations have been exported as JSON`,
+                    description: `${importedData.length} locations have been exported as JSON`,
                   });
                 }}
               >
@@ -540,65 +500,34 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
                   <Button variant="outline" onClick={() => setIsAddingLocation(false)}>Cancel</Button>
                   <Button onClick={handleAddLocation}>
                     <Save className="mr-2 h-4 w-4" />
-                    Save Location
+                    Add Location
                   </Button>
                 </div>
               </div>
             )}
-            
-            <div className="mt-4">
-              <h4 className="text-sm font-medium mb-2">
-                Your Saved Locations 
-                <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600">
-                  {savedLocations.length}
-                </span>
-              </h4>
-              
-              {savedLocations.length > 0 ? (
-                <div className="space-y-2">
-                  {savedLocations.map((location) => (
-                    <div 
-                      key={location.id} 
-                      className="flex items-center justify-between rounded-md border p-3 hover:bg-gray-50"
-                    >
-                      <div>
-                        <h5 className="text-sm font-medium">{location.name}, {location.state}</h5>
-                        <p className="text-xs text-gray-500">
-                          GHI: {location.ghi} kWh/m²/day | Score: {location.solarScore}/100
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            if (onDataImported) {
-                              onDataImported([location]);
-                              
-                              toast({
-                                title: "Location loaded",
-                                description: `Loaded data for ${location.name}, ${location.state}`,
-                              });
-                            }
-                          }}
-                        >
-                          <Clock className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-md border border-dashed p-6 text-center">
-                  <p className="text-sm text-gray-500">
-                    You don't have any saved locations yet. Add a custom location or import data.
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
+          
+          {importedData.length > 0 && (
+            <div className="flex justify-center mt-4">
+              <Button 
+                onClick={() => setShowAnalysis(!showAnalysis)} 
+                className="w-full"
+                variant={showAnalysis ? "secondary" : "default"}
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                {showAnalysis ? "Hide Analysis" : "View Detailed Analysis"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+      
+      {showAnalysis && importedData.length > 0 && (
+        <AnalysisResult 
+          data={importedData} 
+          fileName={selectedFile ? selectedFile.name : "Custom Location"} 
+        />
+      )}
     </div>
   );
 };

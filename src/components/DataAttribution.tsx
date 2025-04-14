@@ -1,15 +1,12 @@
 
-import React from "react";
+import React, { memo } from "react";
+import { AlertCircle } from "lucide-react";
 
-const DataAttribution: React.FC = () => {
+const DataAttribution: React.FC = memo(() => {
   return (
-    <div className="rounded-lg bg-blue-50 p-4 text-blue-800">
+    <div className="rounded-lg bg-blue-50 p-4 text-blue-800 shadow-sm">
       <div className="flex items-start space-x-3">
-        <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 16v-4" />
-          <path d="M12 8h.01" />
-        </svg>
+        <AlertCircle className="mt-0.5 h-5 w-5" />
         <div>
           <h3 className="font-medium">Data Sources</h3>
           <p className="text-sm">
@@ -21,6 +18,8 @@ const DataAttribution: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+DataAttribution.displayName = "DataAttribution";
 
 export default DataAttribution;
