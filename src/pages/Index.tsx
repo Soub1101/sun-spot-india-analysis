@@ -1,11 +1,12 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sun, Search, Download, ArrowRight } from "lucide-react";
+import { Sun, Search, Download, ArrowRight, Star, FileBarChart, MapPin, Building, BarChart2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 import indiaLocations from "@/data/indiaLocations";
+import SavedLocations from "@/components/SavedLocations";
 
 interface LocationData {
   id: string;
@@ -31,8 +32,12 @@ const getSolarScoreLabel = (score: number) => {
   return { label: "Poor", color: "text-red-500" };
 };
 
-const LocationDetails = ({ location }: { location: LocationData }) => {
+const LocationDetails = ({ location, onSaveLocation }: { 
+  location: LocationData, 
+  onSaveLocation: (location: LocationData) => void 
+}) => {
   const score = getSolarScoreLabel(location.solarScore);
+  const navigate = useNavigate();
   
   const downloadData = () => {
     const jsonData = JSON.stringify(location, null, 2);
@@ -52,7 +57,6 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
     });
   };
   
-  // Generate monthly data based on location's GHI value with some variation
   const monthlyData = [
     { month: "Jan", ghi: Math.round(location.ghi * 0.7) },
     { month: "Feb", ghi: Math.round(location.ghi * 0.8) },
@@ -69,24 +73,34 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
   ];
   
   return (
-    <div className="animate-fade-in space-y-6 rounded-lg border p-6 mt-4">
+    <div className="animate-fade-in space-y-6 rounded-lg border p-6 mt-4 bg-white shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl font-bold">{location.name}</h2>
           <p className="text-gray-500">{location.state}{location.district ? `, ${location.district}` : ''}</p>
         </div>
-        <Button
-          variant="outline" 
-          className="flex items-center gap-2"
-          onClick={downloadData}
-        >
-          <Download className="h-4 w-4" />
-          Download Data
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline" 
+            className="flex items-center gap-2"
+            onClick={() => onSaveLocation(location)}
+          >
+            <Star className="h-4 w-4 text-yellow-500" />
+            Save Location
+          </Button>
+          <Button
+            variant="outline" 
+            className="flex items-center gap-2"
+            onClick={downloadData}
+          >
+            <Download className="h-4 w-4" />
+            Download Data
+          </Button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">GHI (Global Horizontal Irradiance)</CardTitle>
           </CardHeader>
@@ -96,7 +110,7 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">DNI (Direct Normal Irradiance)</CardTitle>
           </CardHeader>
@@ -106,7 +120,7 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Solar Suitability Score</CardTitle>
           </CardHeader>
@@ -116,7 +130,7 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Coordinates</CardTitle>
           </CardHeader>
@@ -137,7 +151,7 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
               <div key={data.month} className="group flex flex-1 flex-col items-center">
                 <div className="relative w-full">
                   <div 
-                    className="mx-auto w-full bg-yellow-500 transition-all duration-300 group-hover:bg-yellow-400"
+                    className="mx-auto w-full bg-yellow-500 transition-all duration-300 group-hover:bg-yellow-400 rounded-t-sm"
                     style={{ height: `${(data.ghi / location.ghi) * 150}px` }}
                   ></div>
                   <div className="absolute bottom-0 left-0 right-0 mx-auto hidden w-full max-w-xs -translate-y-2 rounded bg-black bg-opacity-80 p-1 text-center text-xs text-white group-hover:block">
@@ -151,7 +165,7 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
         </div>
       </div>
       
-      <div className="mt-6 rounded-lg bg-blue-50 p-4">
+      <div className="mt-6 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 p-6">
         <h3 className="text-lg font-semibold text-blue-700">Recommendations</h3>
         <p className="mt-2 text-sm text-blue-700">
           {score.label === "Excellent" || score.label === "Very Good" ? (
@@ -178,7 +192,11 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
           </div>
         )}
         
-        <Button className="mt-4 flex items-center gap-2" size="sm">
+        <Button 
+          className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700" 
+          size="sm"
+          onClick={() => navigate("/live-data")}
+        >
           View Detailed Report
           <ArrowRight className="h-4 w-4" />
         </Button>
@@ -190,7 +208,57 @@ const LocationDetails = ({ location }: { location: LocationData }) => {
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
+  const [savedLocations, setSavedLocations] = useState<LocationData[]>([]);
+  const navigate = useNavigate();
   
+  useEffect(() => {
+    const saved = localStorage.getItem("savedLocations");
+    if (saved) {
+      try {
+        setSavedLocations(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error loading saved locations:", e);
+      }
+    }
+  }, []);
+  
+  const saveLocation = (location: LocationData) => {
+    if (savedLocations.some(loc => loc.id === location.id)) {
+      toast({
+        title: "Already saved",
+        description: `${location.name} is already in your saved locations`,
+      });
+      return;
+    }
+    
+    const updatedLocations = [...savedLocations, location];
+    setSavedLocations(updatedLocations);
+    localStorage.setItem("savedLocations", JSON.stringify(updatedLocations));
+    
+    toast({
+      title: "Location saved",
+      description: `${location.name} has been added to your saved locations`,
+    });
+  };
+  
+  const removeLocation = (locationId: string) => {
+    const updatedLocations = savedLocations.filter(loc => loc.id !== locationId);
+    setSavedLocations(updatedLocations);
+    localStorage.setItem("savedLocations", JSON.stringify(updatedLocations));
+    
+    toast({
+      title: "Location removed",
+      description: "The location has been removed from your saved locations",
+    });
+  };
+  
+  const selectSavedLocation = (locationId: string) => {
+    const location = indiaLocations.find(loc => loc.id === locationId);
+    if (location) {
+      setSelectedLocation(location);
+    }
+  };
+
   const handleSearch = () => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) {
@@ -229,7 +297,7 @@ const Index = () => {
         }
         `}
       </style>
-      <div className="solar-gradient rounded-lg py-12 text-white">
+      <div className="solar-gradient rounded-lg py-12 text-white shadow-lg">
         <div className="container mx-auto px-6">
           <div className="flex items-center space-x-4">
             <Sun className="h-12 w-12 text-yellow-300" />
@@ -255,7 +323,7 @@ const Index = () => {
           </div>
           
           <div className="mt-6 flex flex-wrap gap-2">
-            {["Delhi", "Mumbai", "Chennai", "Rajasthan", "Gujarat"].map((suggestion) => (
+            {["Delhi", "Mumbai", "Chennai", "Rajasthan", "Gujarat", "Indore"].map((suggestion) => (
               <Button 
                 key={suggestion}
                 variant="outline" 
@@ -263,7 +331,8 @@ const Index = () => {
                 onClick={() => {
                   setSearchQuery(suggestion);
                   const result = indiaLocations.find(
-                    (loc) => loc.name === suggestion || loc.state === suggestion
+                    (loc) => loc.name === suggestion || loc.state === suggestion || 
+                            (loc.district && loc.district === suggestion)
                   );
                   if (result) {
                     setSelectedLocation(result);
@@ -278,20 +347,84 @@ const Index = () => {
       </div>
       
       <div className="container mx-auto px-4 py-8">
-        {selectedLocation ? (
-          <LocationDetails location={selectedLocation} />
-        ) : (
-          <div className="mt-8 rounded-lg border border-dashed p-12 text-center">
-            <Sun className="mx-auto h-12 w-12 text-yellow-500 opacity-50" />
-            <h2 className="mt-4 text-xl font-medium">Search for a Location</h2>
-            <p className="mt-2 text-gray-500">
-              Enter a city, state, or district to analyze its solar potential
-            </p>
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="md:col-span-2">
+            {selectedLocation ? (
+              <LocationDetails 
+                location={selectedLocation} 
+                onSaveLocation={saveLocation}
+              />
+            ) : (
+              <div className="mt-8 rounded-lg border border-dashed p-12 text-center bg-white">
+                <Sun className="mx-auto h-12 w-12 text-yellow-500 opacity-50" />
+                <h2 className="mt-4 text-xl font-medium">Search for a Location</h2>
+                <p className="mt-2 text-gray-500">
+                  Enter a city, state, or district to analyze its solar potential
+                </p>
+              </div>
+            )}
           </div>
-        )}
+          
+          <div>
+            <SavedLocations 
+              locations={savedLocations}
+              onSelectLocation={selectSavedLocation}
+              onRemoveLocation={removeLocation}
+            />
+            
+            <div className="mt-6 space-y-4">
+              <Card className="hover:shadow-md transition-shadow border-blue-100">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-lg">
+                  <CardTitle className="flex items-center text-blue-700">
+                    <FileBarChart className="h-5 w-5 mr-2" />
+                    Detailed Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Get comprehensive reports on solar potential, ROI estimates, and custom comparisons.
+                  </p>
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => navigate("/live-data")}
+                  >
+                    View Analytics
+                  </Button>
+                </CardContent>
+              </Card>
+              
+              <Card className="hover:shadow-md transition-shadow border-green-100">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 rounded-t-lg">
+                  <CardTitle className="flex items-center text-green-700">
+                    <Building className="h-5 w-5 mr-2" />
+                    Solar Installation Guide
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Learn about optimal solar panel placement and sizing based on your location.
+                  </p>
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => {
+                      toast({
+                        title: "Coming Soon",
+                        description: "The installation guide will be available in a future update.",
+                      });
+                    }}
+                  >
+                    View Guide
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
         
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
+          <Card className="hover:shadow-md transition-shadow border-t-4 border-t-yellow-400">
             <CardHeader>
               <Sun className="h-8 w-8 text-yellow-500" />
               <CardTitle className="mt-4">Solar Radiation Data</CardTitle>
@@ -300,56 +433,55 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/live-data")}
+              >
                 Explore Solar Data
               </Button>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="hover:shadow-md transition-shadow border-t-4 border-t-blue-400">
             <CardHeader>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-8 w-8 text-blue-500" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor" 
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
+              <BarChart2 className="h-8 w-8 text-blue-500" />
               <CardTitle className="mt-4">Detailed Analysis</CardTitle>
               <CardDescription>
                 Get comprehensive reports on solar potential and ROI estimates
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/live-data")}
+              >
                 Create Analysis
               </Button>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="hover:shadow-md transition-shadow border-t-4 border-t-green-400">
             <CardHeader>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-8 w-8 text-green-500" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor" 
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-              </svg>
-              <CardTitle className="mt-4">Solar Installation Guide</CardTitle>
+              <MapPin className="h-8 w-8 text-green-500" />
+              <CardTitle className="mt-4">Installation Potential</CardTitle>
               <CardDescription>
                 Learn about optimal solar panel placement based on your location
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
-                View Guide
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => {
+                  toast({
+                    title: "Coming Soon",
+                    description: "The installation potential guide will be available in a future update.",
+                  });
+                }}
+              >
+                View Potential
               </Button>
             </CardContent>
           </Card>

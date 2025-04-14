@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +8,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieC
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import indiaLocations from "@/data/indiaLocations";
 import { toast } from "@/components/ui/use-toast";
+import { useTemperatureCalculation } from "@/hooks/useTemperatureCalculation";
 
 // Define solar radiation categories
 const getRadiationCategory = (value: number) => {
@@ -152,6 +152,12 @@ const LiveData: React.FC = () => {
   // Current radiation value (latest in the array)
   const currentRadiation = liveData.length ? liveData[liveData.length - 1].ghi : 0;
   const radiationCategory = getRadiationCategory(currentRadiation);
+  
+  // Use our custom temperature hook for more accurate temperature calculation
+  const temperatureData = useTemperatureCalculation(
+    locationData?.latitude || 20, 
+    currentRadiation
+  );
   
   // Determine weather icon
   const WeatherIcon = currentRadiation > 700 ? Sun 
@@ -301,9 +307,12 @@ const LiveData: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold">
-                  {Math.round(25 + (currentRadiation / 1000) * 10)}°C
+                  {temperatureData.temperature}°C
                 </div>
-                <p className="text-sm text-gray-500">Feels like {Math.round(26 + (currentRadiation / 1000) * 11)}°C</p>
+                <p className="text-sm text-gray-500">
+                  Feels like {temperatureData.feelsLike}°C
+                  <span className="ml-1">({temperatureData.description})</span>
+                </p>
               </div>
               <Thermometer className="h-9 w-9 text-red-400" />
             </div>
