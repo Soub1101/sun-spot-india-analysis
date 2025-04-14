@@ -3,12 +3,13 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileDown, FileUp, PlusCircle, Save, Clock, BarChart3 } from "lucide-react";
+import { FileDown, FileUp, PlusCircle, Save, Clock, BarChart3, HelpCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import AnalysisResult from "./AnalysisResult";
+import { downloadSampleData, downloadSampleDataJSON } from "@/data/sampleSolarData";
 
 interface ImportExportProps {
   onDataImported?: (data: any) => void;
@@ -122,6 +123,7 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
   
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -160,26 +162,17 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
           }
           
           if (item.ghi && item.dni && !item.solarScore) {
-            const normalizedGHI = Math.min(Math.max((parseFloat(item.ghi) - 4) / 2.5, 0), 1);
-            const normalizedDNI = Math.min(Math.max((parseFloat(item.dni) - 4.5) / 2.5, 0), 1);
-            item.solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
+            item.solarScore = calculateSolarScore(Number(item.ghi), Number(item.dni));
           }
           
           if (item.ghi && item.dni && !item.monthlyData) {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const seasonalFactors = [0.7, 0.8, 0.9, 1.1, 1.2, 1.1, 0.9, 0.8, 0.9, 0.8, 0.7, 0.6];
-            
-            item.monthlyData = months.map((month, idx) => ({
-              month,
-              ghi: Math.round(parseFloat(item.ghi) * seasonalFactors[idx] * 100) / 100,
-              dni: Math.round(parseFloat(item.dni) * seasonalFactors[idx] * 100) / 100,
-            }));
+            item.monthlyData = generateMonthlyData(Number(item.ghi), Number(item.dni));
           }
           
           if (item.ghi && item.solarScore && (!item.capacityMW || !item.generationMWh)) {
-            const baseCapacityFactor = 0.16 + (parseFloat(item.ghi) - 4) * 0.03;
-            item.capacityMW = item.capacityMW || Math.round(1000 * (parseFloat(item.solarScore) / 100) * 1.2);
-            item.generationMWh = item.generationMWh || Math.round(item.capacityMW * 8760 * baseCapacityFactor);
+            const { capacityMW, generationMWh } = estimatePotential(Number(item.ghi), Number(item.solarScore));
+            item.capacityMW = item.capacityMW || capacityMW;
+            item.generationMWh = item.generationMWh || generationMWh;
           }
           
           return {
@@ -211,9 +204,7 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
           }
           
           if (dataArray[0].ghi && dataArray[0].dni && !dataArray[0].solarScore) {
-            const normalizedGHI = Math.min(Math.max((parseFloat(dataArray[0].ghi) - 4) / 2.5, 0), 1);
-            const normalizedDNI = Math.min(Math.max((parseFloat(dataArray[0].dni) - 4.5) / 2.5, 0), 1);
-            dataArray[0].solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
+            dataArray[0].solarScore = calculateSolarScore(Number(dataArray[0].ghi), Number(dataArray[0].dni));
           }
         }
         
@@ -256,22 +247,9 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
       return;
     }
     
-    const normalizedGHI = Math.min(Math.max((newLocation.ghi - 4) / 2.5, 0), 1);
-    const normalizedDNI = Math.min(Math.max((newLocation.dni - 4.5) / 2.5, 0), 1);
-    const solarScore = Math.round((normalizedGHI * 0.6 + normalizedDNI * 0.4) * 100);
-    
-    const baseCapacityFactor = 0.16 + (newLocation.ghi - 4) * 0.03;
-    const capacityMW = Math.round(1000 * (solarScore / 100) * 1.2);
-    const generationMWh = Math.round(capacityMW * 8760 * baseCapacityFactor);
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const seasonalFactors = [0.7, 0.8, 0.9, 1.1, 1.2, 1.1, 0.9, 0.8, 0.9, 0.8, 0.7, 0.6];
-    
-    const monthlyData = months.map((month, index) => ({
-      month,
-      ghi: Math.round(newLocation.ghi * seasonalFactors[index] * 100) / 100,
-      dni: Math.round(newLocation.dni * seasonalFactors[index] * 100) / 100,
-    }));
+    const solarScore = calculateSolarScore(newLocation.ghi, newLocation.dni);
+    const { capacityMW, generationMWh } = estimatePotential(newLocation.ghi, solarScore);
+    const monthlyData = generateMonthlyData(newLocation.ghi, newLocation.dni);
     
     const locationData = {
       ...newLocation,
@@ -320,48 +298,116 @@ const ImportExport: React.FC<ImportExportProps> = ({ onDataImported }) => {
             <div className="space-y-2">
               <h3 className="text-sm font-medium">Import Data</h3>
               <p className="text-xs text-gray-500">Import location data from CSV or JSON files</p>
-              <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    <FileUp className="mr-2 h-4 w-4" />
-                    Import Data
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Import Solar Data</DialogTitle>
-                    <DialogDescription>
-                      Upload a CSV or JSON file with location data. 
-                      Required fields: name, state, ghi, dni, latitude, longitude.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="file-upload">Select File</Label>
-                      <Input 
-                        id="file-upload" 
-                        type="file" 
-                        accept=".csv,.json" 
-                        onChange={handleFileSelect}
-                      />
+              <div className="flex flex-col space-y-2">
+                <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <FileUp className="mr-2 h-4 w-4" />
+                      Import Data
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Import Solar Data</DialogTitle>
+                      <DialogDescription>
+                        Upload a CSV or JSON file with location data. 
+                        Required fields: name, state, ghi, dni, latitude, longitude.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="file-upload">Select File</Label>
+                        <Input 
+                          id="file-upload" 
+                          type="file" 
+                          accept=".csv,.json" 
+                          onChange={handleFileSelect}
+                        />
+                      </div>
+                      
+                      <Alert>
+                        <AlertTitle>Data Format</AlertTitle>
+                        <AlertDescription>
+                          CSV headers or JSON properties should include: name, state, district (optional), 
+                          ghi, dni, latitude, longitude. Other fields will be calculated automatically.
+                        </AlertDescription>
+                      </Alert>
+                      
+                      <div className="flex justify-between items-center">
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          onClick={() => {
+                            setImportDialogOpen(false);
+                            setSampleDialogOpen(true);
+                          }}
+                        >
+                          <HelpCircle className="h-4 w-4 mr-1" />
+                          Need sample data?
+                        </Button>
+                      </div>
                     </div>
                     
-                    <Alert>
-                      <AlertTitle>Data Format</AlertTitle>
-                      <AlertDescription>
-                        CSV headers or JSON properties should include: name, state, district (optional), 
-                        ghi, dni, latitude, longitude. Other fields will be calculated automatically.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                  
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={processFile}>Import</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={processFile}>Import</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={sampleDialogOpen} onOpenChange={setSampleDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Sample Data</DialogTitle>
+                      <DialogDescription>
+                        Download sample data to see the required format for import
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                      <p className="text-sm">
+                        Click the buttons below to download sample data in either CSV or JSON format.
+                        You can then modify this data with your own values and import it back.
+                      </p>
+                      
+                      <div className="flex flex-col space-y-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            downloadSampleData();
+                            toast({
+                              title: "Sample CSV Downloaded",
+                              description: "A sample CSV file has been downloaded to your device",
+                            });
+                          }}
+                        >
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Download Sample CSV
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            downloadSampleDataJSON();
+                            toast({
+                              title: "Sample JSON Downloaded",
+                              description: "A sample JSON file has been downloaded to your device",
+                            });
+                          }}
+                        >
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Download Sample JSON
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button onClick={() => setSampleDialogOpen(false)}>Close</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
             
             <div className="space-y-2">

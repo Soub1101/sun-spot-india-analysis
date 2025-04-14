@@ -19,6 +19,16 @@ const SolarDataHeader: React.FC<SolarDataHeaderProps> = ({
   locations,
   handleDownloadData
 }) => {
+  // Display the current date & time more clearly
+  const currentDateTime = new Date().toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
   return (
     <>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -45,9 +55,9 @@ const SolarDataHeader: React.FC<SolarDataHeaderProps> = ({
         </div>
       </div>
       
-      <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
+      <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-6">
         <div className="w-full sm:w-64">
-          <Select defaultValue={selectedLocation} onValueChange={setSelectedLocation}>
+          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
@@ -61,7 +71,7 @@ const SolarDataHeader: React.FC<SolarDataHeaderProps> = ({
           </Select>
         </div>
         <div className="text-sm text-gray-500">
-          Last updated: {new Date().toLocaleTimeString()}
+          Last updated: {currentDateTime}
         </div>
         <Button 
           variant="outline" 

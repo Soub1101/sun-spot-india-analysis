@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect } from "react";
-import { FileDown } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { useTemperatureCalculation } from "@/hooks/useTemperatureCalculation";
 import indiaLocations from "@/data/indiaLocations";
@@ -21,12 +20,29 @@ import SolarRecommendationCards from "@/components/SolarRecommendationCards";
 import DataAttribution from "@/components/DataAttribution";
 import ImportExport from "@/components/ImportExport";
 
+// Optimization: Move this outside the component to prevent recreating on each render
+const chartConfig = {
+  radiation: {
+    label: "Solar Radiation",
+    color: "#FFB800",
+  },
+  ghi: {
+    label: "GHI",
+    color: "#FFB800",
+  },
+  dni: {
+    label: "DNI",
+    color: "#FF8042",
+  },
+};
+
 const LiveData: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState(indiaLocations[0]?.id || "delhi-1");
   const [liveData, setLiveData] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [stateDistribution, setStateDistribution] = useState<any[]>([]);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [importedLocations, setImportedLocations] = useState<any[]>([]);
   
   // Get current location data
   const locationData = indiaLocations.find(loc => loc.id === selectedLocation) || indiaLocations[0];
@@ -40,47 +56,43 @@ const LiveData: React.FC = () => {
     currentRadiation
   );
   
-  // Chart configuration
-  const chartConfig = {
-    radiation: {
-      label: "Solar Radiation",
-      color: "#FFB800",
-    },
-    ghi: {
-      label: "GHI",
-      color: "#FFB800",
-    },
-    dni: {
-      label: "DNI",
-      color: "#FF8042",
-    },
-  };
+  // Load data handler - memoized to prevent recreation on each render
+  const loadLocationData = useCallback((location: any) => {
+    if (location) {
+      const hourlyData = convertToHourlyData(location);
+      setLiveData(hourlyData);
+      setMonthlyData(generateMonthlyData(location));
+      
+      // For state distribution, use all locations (including imported)
+      const allLocations = [...indiaLocations, ...importedLocations];
+      setStateDistribution(generateStateDistribution(allLocations));
+    }
+  }, [importedLocations]);
 
   // Effect to load initial data and update on location change
   useEffect(() => {
-    if (locationData) {
-      setLiveData(convertToHourlyData(locationData));
-      setMonthlyData(generateMonthlyData(locationData));
-      setStateDistribution(generateStateDistribution(indiaLocations));
-    }
-  }, [selectedLocation, refreshCounter]);
+    loadLocationData(locationData);
+  }, [selectedLocation, refreshCounter, loadLocationData]);
   
-  // Auto-refresh effect
+  // Auto-refresh effect - with more efficient interval handling
   useEffect(() => {
     const interval = setInterval(() => {
-      if (locationData) {
-        setLiveData(convertToHourlyData(locationData));
-        setRefreshCounter(prev => prev + 1);
-      }
+      loadLocationData(locationData);
+      setRefreshCounter(prev => prev + 1);
     }, 20000); // Update every 20 seconds
     
     return () => clearInterval(interval);
-  }, [locationData]);
+  }, [locationData, loadLocationData]);
 
   // Handlers
   const handleRefreshData = () => {
-    setLiveData(convertToHourlyData(locationData));
+    loadLocationData(locationData);
     setRefreshCounter(prev => prev + 1);
+    
+    toast({
+      title: "Data Refreshed",
+      description: "The solar data has been updated with the latest values."
+    });
   };
 
   const handleDownloadData = () => {
@@ -92,8 +104,18 @@ const LiveData: React.FC = () => {
   };
 
   const handleDataImported = (importedData: any[]) => {
-    // Handle imported data if needed
-    console.log("Data imported:", importedData);
+    if (importedData && importedData.length > 0) {
+      setImportedLocations(importedData);
+      
+      // Update state distribution with new locations
+      const allLocations = [...indiaLocations, ...importedData];
+      setStateDistribution(generateStateDistribution(allLocations));
+      
+      toast({
+        title: "Data Imported Successfully",
+        description: `${importedData.length} location(s) have been imported and are ready for analysis.`
+      });
+    }
   };
 
   return (

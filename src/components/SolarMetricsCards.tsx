@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Sun, Cloud, CloudRain, Wind, Thermometer, BarChart3 } from "lucide-react";
 import { getRadiationCategory, getWeatherDescription } from "@/utils/solarDataUtils";
@@ -19,18 +19,38 @@ const SolarMetricsCards: React.FC<SolarMetricsCardsProps> = ({
   temperatureData,
   locationData
 }) => {
-  // Ensure currentRadiation is properly calculated
-  // If it's daytime (6am-6pm), show realistic value based on time of day
-  // If it's nighttime, radiation should be very low
-  const currentHour = new Date().getHours();
-  const isDaytime = currentHour >= 6 && currentHour <= 18;
+  // Calculate more accurate current radiation based on time of day
+  const currentTime = useMemo(() => {
+    const now = new Date();
+    const hours = now.getHours();
+    const mins = now.getMinutes();
+    return { hours, mins };
+  }, []);
   
-  // Adjust current radiation based on time of day
-  let adjustedRadiation = currentRadiation;
-  if (!isDaytime) {
-    // Nighttime - radiation should be close to zero
-    adjustedRadiation = Math.round(Math.random() * 10); // 0-10 W/m² at night
-  }
+  // Calculate adjusted radiation based on time of day with more accuracy
+  const adjustedRadiation = useMemo(() => {
+    const { hours } = currentTime;
+    
+    // Night time (after sunset or before sunrise)
+    if (hours < 6 || hours > 18) {
+      return 0;
+    }
+    
+    // Distance from solar noon (12:00)
+    const distanceFromNoon = Math.abs(hours + (currentTime.mins / 60) - 12);
+    
+    // Create a bell curve with the peak at noon
+    // The formula creates a smooth curve that peaks at noon and drops to zero at sunrise/sunset
+    const baseMaxRadiation = locationData?.ghi ? locationData.ghi * 1000 : 800; // Convert kWh/m²/day to peak W/m²
+    
+    // Bell curve formula: baseMax * cos²(distanceFromNoon * π/12)
+    const radiationFactor = Math.cos(distanceFromNoon * Math.PI / 12) ** 2;
+    
+    // Add some random variation (±10%)
+    const variation = 0.9 + (Math.random() * 0.2);
+    
+    return Math.round(baseMaxRadiation * radiationFactor * variation);
+  }, [currentTime, locationData?.ghi]);
   
   const radiationCategory = getRadiationCategory(adjustedRadiation);
 
@@ -68,7 +88,7 @@ const SolarMetricsCards: React.FC<SolarMetricsCardsProps> = ({
             <div>
               <div className="text-2xl font-bold">{getWeatherDescription(adjustedRadiation)}</div>
               <p className="text-sm text-gray-500">
-                {isDaytime ? "Daytime conditions" : "Nighttime conditions"}
+                {currentTime.hours >= 6 && currentTime.hours <= 18 ? "Daytime conditions" : "Nighttime conditions"}
               </p>
             </div>
             <WeatherIcon className="h-9 w-9 text-blue-400" />
