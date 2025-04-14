@@ -93,23 +93,40 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, fileName, onSave 
 
   // Generate a simple score based on the data
   const generateScore = () => {
-    if (averages.avgGHI > 5.5 && averages.avgDNI > 6.0) {
+    const avgGHI = parseFloat(averages.avgGHI as string);
+    const avgDNI = parseFloat(averages.avgDNI as string);
+    
+    if (avgGHI > 5.5 && avgDNI > 6.0) {
       return { score: 85, label: "Excellent", color: "text-green-500" };
-    } else if (averages.avgGHI > 5.0 && averages.avgDNI > 5.5) {
+    } else if (avgGHI > 5.0 && avgDNI > 5.5) {
       return { score: 75, label: "Very Good", color: "text-green-400" };
-    } else if (averages.avgGHI > 4.5 && averages.avgDNI > 5.0) {
+    } else if (avgGHI > 4.5 && avgDNI > 5.0) {
       return { score: 65, label: "Good", color: "text-blue-500" };
-    } else if (averages.avgGHI > 4.0 && averages.avgDNI > 4.5) {
+    } else if (avgGHI > 4.0 && avgDNI > 4.5) {
       return { score: 55, label: "Moderate", color: "text-yellow-500" };
-    } else if (averages.avgGHI > 3.5 && averages.avgDNI > 4.0) {
+    } else if (avgGHI > 3.5 && avgDNI > 4.0) {
       return { score: 45, label: "Fair", color: "text-orange-500" };
     } else {
       return { score: 35, label: "Poor", color: "text-red-500" };
     }
   };
 
-  const solarScore = averages.avgScore > 0 
-    ? { score: averages.avgScore, label: averages.avgScore > 80 ? "Excellent" : averages.avgScore > 70 ? "Very Good" : averages.avgScore > 60 ? "Good" : averages.avgScore > 50 ? "Moderate" : averages.avgScore > 40 ? "Fair" : "Poor", color: averages.avgScore > 80 ? "text-green-500" : averages.avgScore > 70 ? "text-green-400" : averages.avgScore > 60 ? "text-blue-500" : averages.avgScore > 50 ? "text-yellow-500" : averages.avgScore > 40 ? "text-orange-500" : "text-red-500" }
+  const avgScoreNumber = typeof averages.avgScore === 'string' ? parseFloat(averages.avgScore) : averages.avgScore;
+
+  const solarScore = avgScoreNumber > 0 
+    ? { 
+        score: avgScoreNumber, 
+        label: avgScoreNumber > 80 ? "Excellent" : 
+              avgScoreNumber > 70 ? "Very Good" : 
+              avgScoreNumber > 60 ? "Good" : 
+              avgScoreNumber > 50 ? "Moderate" : 
+              avgScoreNumber > 40 ? "Fair" : "Poor", 
+        color: avgScoreNumber > 80 ? "text-green-500" : 
+              avgScoreNumber > 70 ? "text-green-400" : 
+              avgScoreNumber > 60 ? "text-blue-500" : 
+              avgScoreNumber > 50 ? "text-yellow-500" : 
+              avgScoreNumber > 40 ? "text-orange-500" : "text-red-500" 
+      }
     : generateScore();
 
   // Download analyzed data as JSON
@@ -139,6 +156,8 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, fileName, onSave 
       description: "Your data analysis has been downloaded as JSON",
     });
   };
+
+  const solarScoreNumber = typeof solarScore.score === 'string' ? parseFloat(solarScore.score as string) : solarScore.score;
 
   return (
     <div className="space-y-6 mt-6">
@@ -270,11 +289,11 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, fileName, onSave 
         <h3 className="text-lg font-semibold text-blue-700">Analysis Summary</h3>
         <p className="mt-2 text-sm text-blue-700">
           Based on the analysis of {data.length} data points from {fileName}, the average solar radiation potential is {solarScore.label.toLowerCase()}.
-          {solarScore.score > 70 ? 
+          {solarScoreNumber > 70 ? 
             " The data shows excellent solar potential, making these locations ideal for solar installations with high energy yield expectations." :
-           solarScore.score > 60 ?
+           solarScoreNumber > 60 ?
             " The data shows good solar potential. Most locations would be suitable for solar installations with proper planning." :
-           solarScore.score > 50 ?
+           solarScoreNumber > 50 ?
             " The data shows moderate solar potential. Installations are viable but may require optimization for maximum efficiency." :
             " The data shows limited solar potential. Careful planning and possibly higher-efficiency panels would be needed for viable installations."
           }
@@ -284,11 +303,11 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, fileName, onSave 
           <div>
             <p className="text-sm font-semibold text-blue-700">Recommendation</p>
             <p className="text-sm text-blue-700">
-              {solarScore.score > 70 ? 
+              {solarScoreNumber > 70 ? 
                 "Proceed with high confidence. These locations are well-suited for both utility-scale and rooftop solar installations." :
-              solarScore.score > 60 ?
+              solarScoreNumber > 60 ?
                 "Proceed with good confidence. Focus on optimal panel orientation and consider seasonal variations." :
-              solarScore.score > 50 ?
+              solarScoreNumber > 50 ?
                 "Proceed with caution. Detailed site assessments and high-efficiency equipment are recommended." :
                 "Consider alternatives or conduct more detailed feasibility studies before proceeding."
               }
