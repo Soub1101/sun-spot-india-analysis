@@ -1,29 +1,101 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
-  const [defaultLocation, setDefaultLocation] = useState("New Delhi, India");
+  const { user, profile } = useAuth();
+  const [name, setName] = useState(profile?.name || "");
+  const [defaultLocation, setDefaultLocation] = useState(profile?.default_location || "New Delhi, India");
+  const [isUpdating, setIsUpdating] = useState(false);
   
-  const handleSaveChanges = () => {
-    // In a real app, this would save to a backend
-    toast({
-      title: "Profile updated",
-      description: "Your profile changes have been saved successfully."
-    });
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setDefaultLocation(profile.default_location || "New Delhi, India");
+    }
+  }, [profile]);
+  
+  const handleSaveChanges = async () => {
+    if (!user) return;
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          name, 
+          default_location: defaultLocation,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile changes have been saved successfully."
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const handleUpdatePassword = () => {
-    toast({
-      title: "Password updated",
-      description: "Your password has been updated successfully."
-    });
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const currentPassword = (form.elements.namedItem('current-password') as HTMLInputElement).value;
+    const newPassword = (form.elements.namedItem('new-password') as HTMLInputElement).value;
+    const confirmPassword = (form.elements.namedItem('confirm-password') as HTMLInputElement).value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill out all password fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "New password and confirmation must match.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been updated successfully."
+      });
+      form.reset();
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update password. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -45,11 +117,15 @@ const Profile: React.FC = () => {
             <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSaveChanges(); }}>
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue={user?.name} />
+                <Input 
+                  id="name" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" defaultValue={user?.email} disabled />
+                <Input id="email" type="email" value={user?.email || ""} disabled />
                 <p className="text-xs text-gray-500">Your email address cannot be changed</p>
               </div>
               <div className="space-y-2">
@@ -60,7 +136,9 @@ const Profile: React.FC = () => {
                   onChange={(e) => setDefaultLocation(e.target.value)} 
                 />
               </div>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating ? "Saving..." : "Save Changes"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -71,7 +149,7 @@ const Profile: React.FC = () => {
             <CardDescription>Manage your password and security settings</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleUpdatePassword(); }}>
+            <form className="space-y-4" onSubmit={handleUpdatePassword}>
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
                 <Input id="current-password" type="password" />
@@ -100,12 +178,25 @@ const Profile: React.FC = () => {
         <CardContent>
           <Button 
             variant="destructive"
-            onClick={() => {
-              toast({
-                title: "Account deletion requested",
-                description: "Please check your email to confirm account deletion.",
-                variant: "destructive"
-              });
+            onClick={async () => {
+              if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+                try {
+                  const { error } = await supabase.auth.admin.deleteUser(user?.id || "");
+                  if (error) throw error;
+                  
+                  toast({
+                    title: "Account deleted",
+                    description: "Your account has been permanently deleted.",
+                  });
+                } catch (error) {
+                  console.error("Error deleting account:", error);
+                  toast({
+                    title: "Delete failed",
+                    description: "Failed to delete account. Please contact support.",
+                    variant: "destructive"
+                  });
+                }
+              }
             }}
           >
             Delete Account

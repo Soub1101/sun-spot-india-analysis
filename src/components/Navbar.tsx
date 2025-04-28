@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   NavigationMenu,
   NavigationMenuList,
@@ -13,13 +14,26 @@ import {
 } from "@/components/ui/navigation-menu";
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, profile, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/");
   };
+
+  // Get initials for avatar
+  const getInitials = () => {
+    if (!profile?.name) return "U";
+    return profile.name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
@@ -54,6 +68,15 @@ const Navbar: React.FC = () => {
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>
+                  {isAdmin && (
+                    <NavigationMenuItem>
+                      <Link to="/admin">
+                        <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                          Admin
+                        </NavigationMenuLink>
+                      </Link>
+                    </NavigationMenuItem>
+                  )}
                 </>
               )}
             </NavigationMenuList>
@@ -63,8 +86,10 @@ const Navbar: React.FC = () => {
           <nav className="flex items-center space-x-2">
             {isAuthenticated ? (
               <>
-                <Link to="/profile">
-                  <Button variant="ghost">Profile</Button>
+                <Link to="/profile" className="flex items-center mr-2">
+                  <Avatar className="h-8 w-8 bg-primary text-primary-foreground">
+                    <AvatarFallback>{getInitials()}</AvatarFallback>
+                  </Avatar>
                 </Link>
                 <Link to="/settings">
                   <Button variant="ghost">Settings</Button>
