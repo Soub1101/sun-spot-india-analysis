@@ -4,14 +4,14 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-gray-500">
-          Welcome back, {user?.name}! Monitor your solar energy insights here.
+          Welcome back, {profile?.name}! Monitor your solar energy insights here.
         </p>
       </div>
       
